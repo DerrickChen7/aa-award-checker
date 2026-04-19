@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} - AA Award Checker{% endblock %}
+{% block content %}
+
+<h2>{{ title }}</h2>
+
+<form method="post" action="{{ action_url }}">
+    <div class="row">
+        <div>
+            <label for="origin">Origin (IATA)</label>
+            <input id="origin" name="origin" maxlength="3" value="{{ route.origin or '' }}" required>
+        </div>
+        <div>
+            <label for="destination">Destination (IATA)</label>
+            <input id="destination" name="destination" maxlength="3" value="{{ route.destination or '' }}" required>
+        </div>
+    </div>
+
+    <div class="row">
+        <div>
+            <label for="start_date">Start date</label>
+            <input id="start_date" name="start_date" type="date" value="{{ route.start_date or '' }}" required>
+        </div>
+        <div>
+            <label for="end_date">End date</label>
+            <input id="end_date" name="end_date" type="date" value="{{ route.end_date or '' }}" required>
+        </div>
+    </div>
+
+    <div class="row">
+        <div>
+            <label for="cabin">Cabin</label>
+            <select id="cabin" name="cabin" required>
+                {% for c in cabins %}
+                <option value="{{ c }}" {% if route.cabin == c %}selected{% endif %}>{{ c }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="max_miles">Max miles (per passenger)</label>
+            <input id="max_miles" name="max_miles" type="number" min="1" step="500"
+                   value="{{ route.max_miles or '' }}" required>
+        </div>
+        <div>
+            <label for="passengers">Passengers</label>
+            <input id="passengers" name="passengers" type="number" min="1" max="9"
+                   value="{{ route.passengers or 1 }}" required>
+        </div>
+    </div>
+
+    <div class="actions">
+        <button class="primary" type="submit">Save</button>
+        <a class="btn" href="{{ url_for('index') }}">Cancel</a>
+    </div>
+</form>
+
+{% endblock %}

@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="actions">
+    <a class="btn primary" href="{{ url_for('route_new') }}">+ Add route</a>
+    <form class="inline" method="post" action="{{ url_for('run_now') }}">
+        <button type="submit">Run check now</button>
+    </form>
+</div>
+
+{% if routes %}
+<table style="margin-top: 1rem;">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Route</th>
+            <th>Dates</th>
+            <th>Cabin</th>
+            <th>Max miles</th>
+            <th>Pax</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for r in routes %}
+        <tr class="{{ '' if r.enabled else 'disabled' }}">
+            <td>{{ r.id }}</td>
+            <td>{{ r.origin }} &rarr; {{ r.destination }}</td>
+            <td>{{ r.start_date }} .. {{ r.end_date }}</td>
+            <td>{{ r.cabin }}</td>
+            <td>{{ "{:,}".format(r.max_miles) }}</td>
+            <td>{{ r.passengers }}</td>
+            <td>{{ "enabled" if r.enabled else "disabled" }}</td>
+            <td>
+                <a class="btn" href="{{ url_for('route_edit', rid=r.id) }}">Edit</a>
+                <form class="inline" method="post" action="{{ url_for('route_toggle', rid=r.id) }}">
+                    <button type="submit">{{ "Disable" if r.enabled else "Enable" }}</button>
+                </form>
+                <form class="inline" method="post" action="{{ url_for('route_delete', rid=r.id) }}"
+                      onsubmit="return confirm('Delete route #{{ r.id }}?');">
+                    <button class="danger" type="submit">Delete</button>
+                </form>
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p style="margin-top:1rem; color:#666;">No routes yet. Click "Add route" to start watching one.</p>
+{% endif %}
+
+{% endblock %}
