@@ -15,6 +15,7 @@ app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET", "dev-secret")
 
 CABINS = ["economy", "premium_economy", "business", "first"]
+CARRIER_FILTERS = ["ac_only", "any_star_alliance"]
 IATA_RE = re.compile(r"^[A-Z]{3}$")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
@@ -26,6 +27,7 @@ def _parse_form(form) -> tuple[dict | None, list[str]]:
     start_date = (form.get("start_date") or "").strip()
     end_date = (form.get("end_date") or "").strip()
     cabin = (form.get("cabin") or "").strip()
+    carrier_filter = (form.get("carrier_filter") or "").strip()
     try:
         max_miles = int(form.get("max_miles") or 0)
     except ValueError:
@@ -51,6 +53,8 @@ def _parse_form(form) -> tuple[dict | None, list[str]]:
             errors.append("Invalid date.")
     if cabin not in CABINS:
         errors.append("Invalid cabin.")
+    if carrier_filter not in CARRIER_FILTERS:
+        errors.append("Invalid carrier filter.")
     if max_miles <= 0:
         errors.append("Max miles must be a positive integer.")
     if passengers < 1 or passengers > 9:
@@ -65,6 +69,7 @@ def _parse_form(form) -> tuple[dict | None, list[str]]:
             "start_date": start_date,
             "end_date": end_date,
             "cabin": cabin,
+            "carrier_filter": carrier_filter,
             "max_miles": max_miles,
             "passengers": passengers,
         },
@@ -92,17 +97,20 @@ def route_new():
                 "route_form.html",
                 route=request.form,
                 cabins=CABINS,
+                carrier_filters=CARRIER_FILTERS,
                 action_url=url_for("route_new"),
                 title="Add route",
             )
         with get_conn() as conn:
             conn.execute(
                 "INSERT INTO routes(origin, destination, start_date, end_date, "
-                "cabin, max_miles, passengers) VALUES (?,?,?,?,?,?,?)",
+                "cabin, carrier_filter, max_miles, passengers) "
+                "VALUES (?,?,?,?,?,?,?,?)",
                 (
                     data["origin"], data["destination"],
                     data["start_date"], data["end_date"],
-                    data["cabin"], data["max_miles"], data["passengers"],
+                    data["cabin"], data["carrier_filter"],
+                    data["max_miles"], data["passengers"],
                 ),
             )
             conn.commit()
@@ -110,8 +118,9 @@ def route_new():
         return redirect(url_for("index"))
     return render_template(
         "route_form.html",
-        route={"passengers": 1},
+        route={"passengers": 1, "carrier_filter": "ac_only"},
         cabins=CABINS,
+        carrier_filters=CARRIER_FILTERS,
         action_url=url_for("route_new"),
         title="Add route",
     )
@@ -133,17 +142,19 @@ def route_edit(rid: int):
                 "route_form.html",
                 route=request.form,
                 cabins=CABINS,
+                carrier_filters=CARRIER_FILTERS,
                 action_url=url_for("route_edit", rid=rid),
                 title=f"Edit route #{rid}",
             )
         with get_conn() as conn:
             conn.execute(
                 "UPDATE routes SET origin=?, destination=?, start_date=?, end_date=?, "
-                "cabin=?, max_miles=?, passengers=? WHERE id = ?",
+                "cabin=?, carrier_filter=?, max_miles=?, passengers=? WHERE id = ?",
                 (
                     data["origin"], data["destination"],
                     data["start_date"], data["end_date"],
-                    data["cabin"], data["max_miles"], data["passengers"],
+                    data["cabin"], data["carrier_filter"],
+                    data["max_miles"], data["passengers"],
                     rid,
                 ),
             )
@@ -155,6 +166,7 @@ def route_edit(rid: int):
         "route_form.html",
         route=dict(row),
         cabins=CABINS,
+        carrier_filters=CARRIER_FILTERS,
         action_url=url_for("route_edit", rid=rid),
         title=f"Edit route #{rid}",
     )

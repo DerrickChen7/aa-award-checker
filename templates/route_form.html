@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ title }} - AA Award Checker{% endblock %}
+{% block title %}{{ title }} - Aeroplan Award Checker{% endblock %}
 {% block content %}
 
 <h2>{{ title }}</h2>
@@ -36,6 +36,19 @@
                 {% endfor %}
             </select>
         </div>
+        <div>
+            <label for="carrier_filter">Carrier filter</label>
+            <select id="carrier_filter" name="carrier_filter" required>
+                {% for cf in carrier_filters %}
+                <option value="{{ cf }}" {% if route.carrier_filter == cf %}selected{% endif %}>
+                    {{ "Air Canada only" if cf == "ac_only" else "Any Star Alliance" }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <div class="row">
         <div>
             <label for="max_miles">Max miles (per passenger)</label>
             <input id="max_miles" name="max_miles" type="number" min="1" step="500"
