@@ -20,6 +20,14 @@ def get_conn() -> sqlite3.Connection:
 def init_db() -> None:
     with get_conn() as conn:
         conn.executescript(SCHEMA_PATH.read_text())
+        # Idempotent migration: add carrier_filter to pre-existing routes tables.
+        try:
+            conn.execute(
+                "ALTER TABLE routes ADD COLUMN carrier_filter "
+                "TEXT NOT NULL DEFAULT 'ac_only'"
+            )
+        except sqlite3.OperationalError:
+            pass  # column already exists
 
 
 if __name__ == "__main__":

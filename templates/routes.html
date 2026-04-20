@@ -16,6 +16,7 @@
             <th>Route</th>
             <th>Dates</th>
             <th>Cabin</th>
+            <th>Carrier</th>
             <th>Max miles</th>
             <th>Pax</th>
             <th>Status</th>
@@ -29,6 +30,7 @@
             <td>{{ r.origin }} &rarr; {{ r.destination }}</td>
             <td>{{ r.start_date }} .. {{ r.end_date }}</td>
             <td>{{ r.cabin }}</td>
+            <td>{{ "AC only" if r.carrier_filter == "ac_only" else "Any Star Alliance" }}</td>
             <td>{{ "{:,}".format(r.max_miles) }}</td>
             <td>{{ r.passengers }}</td>
             <td>{{ "enabled" if r.enabled else "disabled" }}</td>

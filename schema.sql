@@ -7,8 +7,9 @@ CREATE TABLE IF NOT EXISTS routes (
     cabin        TEXT NOT NULL,
     max_miles    INTEGER NOT NULL,
     passengers   INTEGER NOT NULL DEFAULT 1,
-    enabled      INTEGER NOT NULL DEFAULT 1,
-    created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+    enabled        INTEGER NOT NULL DEFAULT 1,
+    carrier_filter TEXT NOT NULL DEFAULT 'ac_only',
+    created_at     TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS alert_state (

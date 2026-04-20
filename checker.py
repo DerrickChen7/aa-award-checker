@@ -12,7 +12,7 @@ import time
 from datetime import date, datetime, timedelta
 from urllib.parse import urlencode
 
-import aa_client
+import aeroplan_client as client
 import emailer
 from db import get_conn
 
@@ -39,23 +39,23 @@ def _iter_dates(start: str, end: str):
         cur += timedelta(days=1)
 
 
-def _aa_deeplink(itin: aa_client.Itinerary, passengers: int) -> str:
+def _deeplink(itin: client.Itinerary, passengers: int) -> str:
     params = {
-        "tripType": "oneWay",
-        "searchType": "Award",
-        "adult": passengers,
-        "cabin": "",
-        "origin": itin.origin,
-        "destination": itin.destination,
-        "departDate": itin.date,
+        "tripType": "OneWay",
+        "lang": "en-CA",
+        "bookingType": "redeem",
+        "org0": itin.origin,
+        "dest0": itin.destination,
+        "departureDate0": itin.date,
+        "ADT": passengers,
     }
-    return "https://www.aa.com/booking/find-flights?" + urlencode(params)
+    return "https://www.aircanada.com/aeroplan/redeem/availability/outbound?" + urlencode(params)
 
 
-def _format_email(route: dict, matches: list[aa_client.Itinerary]) -> tuple[str, str]:
+def _format_email(route: dict, matches: list[client.Itinerary]) -> tuple[str, str]:
     best = min(matches, key=lambda m: m.miles)
     subject = (
-        f"[AA Award] {route['origin']}->{route['destination']} "
+        f"[Aeroplan] {route['origin']}->{route['destination']} "
         f"{route['cabin'].title()} from {best.miles:,} mi on {best.date}"
     )
 
@@ -63,16 +63,18 @@ def _format_email(route: dict, matches: list[aa_client.Itinerary]) -> tuple[str,
         f"Match for route #{route['id']}: "
         f"{route['origin']}->{route['destination']} "
         f"{route['cabin']} <= {route['max_miles']:,} mi, "
-        f"{route['passengers']} pax, window {route['start_date']}..{route['end_date']}",
+        f"{route['passengers']} pax, "
+        f"carrier={route['carrier_filter']}, "
+        f"window {route['start_date']}..{route['end_date']}",
         "",
     ]
     for m in sorted(matches, key=lambda x: (x.date, x.miles)):
         lines.append(
-            f"  {m.date}  {m.flight_numbers:<16}  "
+            f"  {m.date}  {m.operating_carrier:<3} {m.flight_numbers:<16}  "
             f"stops={m.stops}  {m.miles:>7,} mi + ${m.taxes_usd:.2f}  "
             f"{m.depart_time} -> {m.arrive_time}"
         )
-        lines.append(f"    {_aa_deeplink(m, route['passengers'])}")
+        lines.append(f"    {_deeplink(m, route['passengers'])}")
     return subject, "\n".join(lines)
 
 
@@ -114,15 +116,15 @@ def _prune(conn, now: datetime):
 
 def _check_route(conn, route: dict, now: datetime) -> int:
     """Check a single route. Returns number of alerts sent."""
-    matches_to_alert: list[aa_client.Itinerary] = []
+    matches_to_alert: list[client.Itinerary] = []
     now_iso = now.isoformat()
 
     for d in _iter_dates(route["start_date"], route["end_date"]):
         try:
-            itins = aa_client.search(
+            itins = client.search(
                 route["origin"], route["destination"], d, route["passengers"]
             )
-        except Exception as e:  # aa_client already swallows most, this is belt-and-suspenders
+        except Exception as e:  # client already swallows most, this is belt-and-suspenders
             log.exception("search crashed for route %s on %s: %s", route["id"], d, e)
             itins = []
 
@@ -130,6 +132,8 @@ def _check_route(conn, route: dict, now: datetime) -> int:
             if itin.cabin != route["cabin"]:
                 continue
             if itin.miles > route["max_miles"]:
+                continue
+            if route["carrier_filter"] == "ac_only" and itin.operating_carrier != "AC":
                 continue
 
             key = itin.flight_key()

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>{% block title %}AA Award Checker{% endblock %}</title>
+    <title>{% block title %}Aeroplan Award Checker{% endblock %}</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
                max-width: 960px; margin: 2rem auto; padding: 0 1rem; color: #222; }
@@ -30,7 +30,7 @@
     </style>
 </head>
 <body>
-    <h1><a href="{{ url_for('index') }}">AA Award Checker</a></h1>
+    <h1><a href="{{ url_for('index') }}">Aeroplan Award Checker</a></h1>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% for category, msg in messages %}

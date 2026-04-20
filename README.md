@@ -1,13 +1,15 @@
-# aa-award-checker
+# aeroplan-award-checker
 
-A small Python service that watches American Airlines award-ticket availability
-and emails you when a route matching your criteria (cabin class, max miles,
-date window) appears. Comes with a local web UI for managing watched routes.
+A small Python service that watches **Air Canada Aeroplan** award-ticket
+availability and emails you when a route matching your criteria (cabin
+class, max miles, carrier filter, date window) appears. Comes with a local
+web UI for managing watched routes.
 
 ## How it works
 
 - **`app.py`** — Flask web UI at `http://127.0.0.1:5000` for adding/editing/deleting routes (SQLite `app.db`).
-- **`checker.py`** — Standalone script. Iterates enabled routes, calls AA's award-search JSON endpoint, filters matches, and emails alerts via Gmail SMTP. Run it on a cron schedule.
+- **`checker.py`** — Standalone script. Iterates enabled routes, calls Air Canada's Aeroplan search JSON endpoint, filters matches, and emails alerts via Gmail SMTP. Run it on a cron schedule.
+- **`aeroplan_client.py`** — Thin wrapper around the Air Canada endpoint. Swap this file if you ever want to change data sources.
 - **Dedup** — Each matching itinerary is "muted" while it stays continuously available (no spam). If it disappears and comes back, you get a new email.
 
 ## Setup
@@ -39,14 +41,19 @@ cp .env.example .env
 python db.py
 ```
 
+`python db.py` is idempotent — safe to run on a fresh install **or** on an
+existing `app.db` (it auto-migrates the `carrier_filter` column).
+
 ## Run the web UI
 
 ```bash
 python app.py
 ```
 
-Open http://127.0.0.1:5000 and add a route, e.g. `JFK -> LHR`, business, 60000
-max miles, over the next 30 days.
+Open http://127.0.0.1:5000 and add a route, e.g.:
+
+- `YYZ -> LHR`, business, max 70,000 miles, window of the next 30 days
+- Carrier filter: **Air Canada only** (only AC metal) or **Any Star Alliance** (UA, LH, NH, SQ, etc.)
 
 Click **Run check now** to trigger a poll immediately (runs in a background
 thread; watch your inbox).
@@ -59,48 +66,53 @@ thread; watch your inbox).
 crontab -e
 ```
 
-Add this line (adjust paths):
+Add (adjust paths):
 
 ```
-*/20 * * * * cd /absolute/path/to/aa-award-checker && /absolute/path/to/venv/bin/python checker.py >> checker.log 2>&1
+*/20 * * * * cd /absolute/path/to/aeroplan-award-checker && /absolute/path/to/venv/bin/python checker.py >> checker.log 2>&1
 ```
 
-### macOS — launchd (alternative)
+## Testing without hitting aircanada.com
 
-Create `~/Library/LaunchAgents/com.aa-award-checker.plist` with a
-`StartInterval` of `1200` (20 minutes). See Apple's `launchd.plist(5)` docs.
-
-## Testing without hitting AA
-
-Set `AA_MOCK=1` in your environment (or in `.env`) and the checker will return
-deterministic fake itineraries instead of calling aa.com. Great for verifying
-your Gmail setup and the dedup logic.
+Set `AEROPLAN_MOCK=1` to get a **deterministic, always-matching** itinerary —
+useful for verifying Gmail delivery and the dedup logic without depending on
+live award space:
 
 ```bash
-AA_MOCK=1 python checker.py
+AEROPLAN_MOCK=1 python checker.py
 ```
+
+The mock emits two itineraries per queried date:
+
+- `AC870` business, 55,000 mi (passes `ac_only` filter)
+- `UA123` economy, 35,000 mi (passes `any_star_alliance` filter, blocked by `ac_only`)
+
+So a route configured as `business` + `ac_only` + `max_miles >= 55000` will
+reliably produce exactly one alert on the first run and zero on the second
+(dedup working).
 
 ## File layout
 
 ```
-app.py             Flask web UI
-checker.py         Main polling entry point (cron runs this)
-aa_client.py       AA search endpoint wrapper (swap this file to switch data source)
-emailer.py         Gmail SMTP sender
-db.py              SQLite helper
-schema.sql         Table definitions
-templates/         Jinja templates for the web UI
+app.py                 Flask web UI
+checker.py             Main polling entry point (cron runs this)
+aeroplan_client.py     Air Canada endpoint wrapper (swap to change data source)
+emailer.py             Gmail SMTP sender
+db.py                  SQLite helper (with idempotent schema migration)
+schema.sql             Table definitions
+templates/             Jinja templates for the web UI
 requirements.txt
 .env.example
 ```
 
 ## Notes / caveats
 
-- The AA endpoint (`www.aa.com/booking/api/search/itinerary`) is **not** an
-  official public API. If AA changes its request/response shape, edit
-  `aa_client.py` (`_build_body` / `_parse`). Use your browser's DevTools
-  Network tab on a real aa.com award search to inspect the current shape.
-- Poll too aggressively and you'll get blocked or rate-limited. 20 minutes is
+- The Air Canada endpoint (`akamai-gw.dbaas.aircanada.com/loyalty/dfwr/api/...`)
+  is **not** an official public API. If AC changes its request/response shape,
+  edit `_build_body` / `_parse` in `aeroplan_client.py`. Use your browser's
+  DevTools Network tab on a real aircanada.com award search to inspect the
+  current shape.
+- Poll too aggressively and you'll get rate-limited or blocked. 20 minutes is
   a reasonable default; don't go below 5.
 - This tool only *alerts* — it does not hold or book seats. Award inventory
   can disappear within minutes, so be ready to book when you see an email.
