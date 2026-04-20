@@ -7,7 +7,7 @@ web UI for managing watched routes.
 
 ## How it works
 
-- **`app.py`** — Flask web UI at `http://127.0.0.1:5000` for adding/editing/deleting routes (SQLite `app.db`).
+- **`app.py`** — Flask web UI at `http://127.0.0.1:5050` for adding/editing/deleting routes (SQLite `app.db`).
 - **`checker.py`** — Standalone script. Iterates enabled routes, calls Air Canada's Aeroplan search JSON endpoint, filters matches, and emails alerts via Gmail SMTP. Run it on a cron schedule.
 - **`aeroplan_client.py`** — Thin wrapper around the Air Canada endpoint. Swap this file if you ever want to change data sources.
 - **Dedup** — Each matching itinerary is "muted" while it stays continuously available (no spam). If it disappears and comes back, you get a new email.
@@ -50,7 +50,7 @@ existing `app.db` (it auto-migrates the `carrier_filter` column).
 python app.py
 ```
 
-Open http://127.0.0.1:5000 and add a route, e.g.:
+Open http://127.0.0.1:5050 and add a route, e.g.:
 
 - `YYZ -> LHR`, business, max 70,000 miles, window of the next 30 days
 - Carrier filter: **Air Canada only** (only AC metal) or **Any Star Alliance** (UA, LH, NH, SQ, etc.)
